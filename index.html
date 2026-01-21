@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Tic-Tac-Toe Pro</title>
+    
+    <style>
+        :root {
+            --primary-color: #3f51b5;
+            --accent-color: #ff4081;
+            --bg-color: #f5f5f5;
+            --surface-color: #ffffff;
+            --text-primary: #212121;
+            --text-secondary: #757575;
+            --board-bg: #e0e0e0;
+            --cell-bg: #ffffff;
+            --elevation-low: 0 2px 5px rgba(0,0,0,0.1);
+            --elevation-high: 0 10px 25px rgba(0,0,0,0.15);
+            --cell-shadow: 0 2px 4px rgba(0,0,0,0.08);
+            --win-color: #4caf50;
+            --lose-color: #e53935;
+        }
+
+        body.dark-mode {
+            --bg-color: #121212;
+            --surface-color: #1e1e1e;
+            --text-primary: #e0e0e0;
+            --text-secondary: #a0a0a0;
+            --board-bg: #2d2d2d;
+            --cell-bg: #383838;
+            --elevation-low: 0 2px 5px rgba(0,0,0,0.5);
+            --elevation-high: 0 10px 25px rgba(0,0,0,0.6);
+            --cell-shadow: 0 2px 4px rgba(0,0,0,0.4);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            /* Using system font stack for 100% offline reliability */
+            font-family: 'Roboto', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            height: 100dvh;
+            width: 100vw;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            transition: background-color 0.3s ease, color 0.3s ease;
+            position: relative;
+        }
+
+        /* SVG Icon Style */
+        .svg-icon {
+            width: 24px;
+            height: 24px;
+            fill: currentColor;
+            display: inline-block;
+            vertical-align: middle;
+        }
+
+        /* Rest of your existing CSS remains EXACTLY the same */
+        .pattern-bg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; opacity: 0.06; transition: opacity 0.3s ease; }
+        body.dark-mode .pattern-bg { opacity: 0.04; }
+        .pat-grid { background-image: radial-gradient(var(--text-primary) 1px, transparent 1px); background-size: 20px 20px; }
+        .pat-dots { background-image: radial-gradient(var(--text-primary) 1.5px, transparent 1.5px); background-size: 15px 15px; }
+        .pat-lines { background: repeating-linear-gradient(45deg, var(--text-primary), var(--text-primary) 1px, transparent 1px, transparent 20px); }
+        .pat-cross { background-image: url("data:image/svg+xml,%3Csvg width='20' height='20' viewBox='0 0 20 20' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L19 19M19 1L1 19' stroke='%23000' stroke-width='1' stroke-opacity='1'/%3E%3C/svg%3E"); }
+        .pat-circle { background-image: url("data:image/svg+xml,%3Csvg width='20' height='20' viewBox='0 0 20 20' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='10' cy='10' r='8' fill='none' stroke='%23000' stroke-width='1'/%3E%3C/svg%3E"); }
+        body:not(.dark-mode) .pat-cross, body:not(.dark-mode) .pat-circle { filter: invert(0); }
+        body.dark-mode .pat-cross, body.dark-mode .pat-circle { filter: invert(1); }
+
+        .app-bar { padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; background-color: var(--surface-color); box-shadow: var(--elevation-low); z-index: 10; }
+        .app-title { font-size: 1.25rem; font-weight: 900; letter-spacing: 0.5px; color: var(--primary-color); }
+        .settings-btn { background: none; border: none; font-size: 1.2rem; color: var(--text-secondary); cursor: pointer; padding: 8px; border-radius: 50%; transition: background 0.2s; }
+        .settings-btn:active { background: rgba(0,0,0,0.1); }
+        .main-container { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: space-evenly; padding: 10px 20px; width: 100%; max-width: 500px; margin: 0 auto; z-index: 1; }
+        .status-badge { background-color: var(--primary-color); color: #fff; padding: 8px 24px; border-radius: 24px; font-weight: 500; font-size: 0.9rem; box-shadow: var(--elevation-low); margin-bottom: 10px; transition: background-color 0.3s; }
+        .scoreboard { display: flex; width: 100%; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+        .score-card { flex: 1; background: var(--surface-color); padding: 10px 5px; border-radius: 12px; text-align: center; box-shadow: var(--elevation-low); display: flex; flex-direction: column; align-items: center; }
+        .score-label { font-size: 0.7rem; color: var(--text-secondary); font-weight: 700; margin-bottom: 4px; }
+        .score-value { font-size: 1.2rem; font-weight: 900; color: var(--text-primary); }
+        .game-board-container { width: 100%; display: flex; justify-content: center; max-height: 50vh; }
+        .game-board { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; background-color: var(--board-bg); padding: 8px; border-radius: 16px; width: 100%; aspect-ratio: 1; position: relative; box-shadow: inset 0 2px 6px rgba(0,0,0,0.05); transition: background-color 0.3s; }
+        .cell { background: var(--cell-bg); border-radius: 8px; display: flex; justify-content: center; align-items: center; font-size: 2.5rem; cursor: pointer; box-shadow: var(--cell-shadow); transition: transform 0.1s; position: relative; }
+        .cell:active { transform: scale(0.96); }
+        .cell.x { color: var(--primary-color); }
+        .cell.o { color: var(--accent-color); }
+        .cell.winning { background-color: var(--primary-color); color: #fff !important; }
+        .controls-area { width: 100%; display: flex; flex-direction: column; gap: 12px; }
+        .segmented-control { display: flex; background: var(--board-bg); padding: 4px; border-radius: 50px; }
+        .seg-btn { flex: 1; padding: 8px; border: none; background: transparent; color: var(--text-secondary); font-weight: 500; font-size: 0.85rem; border-radius: 24px; cursor: pointer; transition: all 0.3s; }
+        .seg-btn.active { background-color: var(--surface-color); color: var(--primary-color); box-shadow: 0 2px 4px rgba(0,0,0,0.1); font-weight: 700; }
+        .action-buttons { display: flex; gap: 10px; }
+        .btn { flex: 1; padding: 14px; border: none; border-radius: 50px; font-weight: 600; font-size: 0.95rem; cursor: pointer; text-transform: uppercase; display: flex; justify-content: center; align-items: center; gap: 8px; }
+        .btn:active { transform: scale(0.98); }
+        .btn-restart { background-color: var(--primary-color); color: #fff; box-shadow: 0 4px 10px rgba(0,0,0,0.2); transition: background-color 0.3s; }
+        .btn-reset { background-color: transparent; color: var(--text-primary); border: 1px solid var(--text-secondary); }
+        .strike-line { position: absolute; background-color: var(--text-primary); border-radius: 5px; pointer-events: none; z-index: 5; opacity: 0.8; transition: width 0.4s, height 0.4s; }
+        .strike-row-1 { top: 16.66%; left: 5%; height: 6px; width: 0; transform: translateY(-50%); }
+        .strike-row-2 { top: 50%; left: 5%; height: 6px; width: 0; transform: translateY(-50%); }
+        .strike-row-3 { top: 83.33%; left: 5%; height: 6px; width: 0; transform: translateY(-50%); }
+        .strike-row-1.active, .strike-row-2.active, .strike-row-3.active { width: 90%; }
+        .strike-col-1 { left: 16.66%; top: 5%; width: 6px; height: 0; transform: translateX(-50%); }
+        .strike-col-2 { left: 50%; top: 5%; width: 6px; height: 0; transform: translateX(-50%); }
+        .strike-col-3 { left: 83.33%; top: 5%; width: 6px; height: 0; transform: translateX(-50%); }
+        .strike-col-1.active, .strike-col-2.active, .strike-col-3.active { height: 90%; }
+        .strike-diag-1 { top: 50%; left: 50%; height: 6px; width: 0; transform: translate(-50%, -50%) rotate(45deg); }
+        .strike-diag-2 { top: 50%; left: 50%; height: 6px; width: 0; transform: translate(-50%, -50%) rotate(-45deg); }
+        .strike-diag-1.active, .strike-diag-2.active { width: 130%; }
+        .winner-banner { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.8); width: 85%; max-width: 350px; padding: 30px 20px; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 15px; opacity: 0; pointer-events: none; transition: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1); background: var(--surface-color); border-radius: 24px; box-shadow: var(--elevation-high); text-align: center; }
+        .winner-banner.visible { opacity: 1; transform: translate(-50%, -50%) scale(1); pointer-events: auto; }
+        .winner-title { font-size: 1.8rem; font-weight: 900; color: var(--primary-color); }
+        .winner-subtitle { font-size: 1rem; color: var(--text-secondary); }
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 200; display: flex; justify-content: center; align-items: flex-end; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
+        .modal-overlay.open { opacity: 1; pointer-events: auto; }
+        .settings-sheet { background: var(--surface-color); width: 100%; max-width: 500px; border-radius: 24px 24px 0 0; padding: 25px; transform: translateY(100%); transition: transform 0.3s ease-out; box-shadow: var(--elevation-high); max-height: 85vh; overflow-y: auto; }
+        .modal-overlay.open .settings-sheet { transform: translateY(0); }
+        .sheet-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .sheet-title { font-size: 1.2rem; font-weight: 700; color: var(--text-primary); }
+        .close-btn { background: none; border: none; font-size: 1.2rem; padding: 5px; cursor: pointer; color: var(--text-secondary); }
+        .setting-section { margin-bottom: 25px; }
+        .section-label { font-size: 0.85rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 12px; display: block; letter-spacing: 0.5px; }
+        .theme-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+        .theme-option { width: 100%; aspect-ratio: 1; border-radius: 50%; border: 2px solid transparent; cursor: pointer; position: relative; box-shadow: 0 2px 5px rgba(0,0,0,0.2); transition: transform 0.2s; }
+        .theme-option:active { transform: scale(0.9); }
+        .theme-option.selected { border-color: var(--text-primary); transform: scale(1.1); }
+        .theme-option.selected::after { content: '✓'; color: #fff; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-weight: bold; }
+        .pattern-list { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+        .pattern-btn { padding: 12px; border: 1px solid var(--board-bg); border-radius: 12px; background: var(--bg-color); color: var(--text-primary); cursor: pointer; font-size: 0.8rem; font-weight: 500; transition: all 0.2s; text-align: center; }
+        .pattern-btn:hover { background: var(--board-bg); }
+        .pattern-btn.active { background: var(--primary-color); color: #fff; border-color: var(--primary-color); }
+        .toggle-row { display: flex; justify-content: space-between; align-items: center; background: var(--board-bg); padding: 12px 16px; border-radius: 12px; }
+        .toggle-label { font-size: 1rem; font-weight: 500; display: flex; align-items: center; gap: 10px; }
+        .about-container { background: var(--bg-color); border-radius: 12px; padding: 4px; margin-bottom: 15px; }
+        .about-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; border-bottom: 1px solid var(--board-bg); }
+        .about-row:last-child { border-bottom: none; }
+        .about-label { font-size: 0.9rem; color: var(--text-secondary); font-weight: 500; }
+        .about-value { font-size: 0.95rem; color: var(--text-primary); font-weight: 600; text-align: right; }
+        .social-links { display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px; }
+        .social-link { display: flex; align-items: center; gap: 12px; padding: 14px 16px; background: var(--bg-color); border-radius: 12px; text-decoration: none; color: var(--text-primary); font-weight: 500; font-size: 0.95rem; transition: all 0.2s; position: relative; }
+        .social-link:active { transform: scale(0.98); background: var(--board-bg); }
+        .privacy-policy { background: var(--bg-color); border-radius: 12px; padding: 16px; }
+        .privacy-header { font-size: 1rem; font-weight: 700; margin-bottom: 12px; border-bottom: 2px solid var(--primary-color); padding-bottom: 8px; }
+        .privacy-content { font-size: 0.85rem; line-height: 1.6; color: var(--text-secondary); }
+        .hide { display: none !important; }
+        @keyframes popIn { 0% { transform: scale(0); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+        .mark-anim { animation: popIn 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+      
+    </style>
+</head>
+<body>
+
+    <div id="bg-pattern" class="pattern-bg"></div>
+
+    <header class="app-bar">
+        <div class="app-title">Tic-Tac-Toe Pro</div>
+        <button class="settings-btn" onclick="toggleSettings(true)">
+            <svg class="svg-icon" viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+        </button>
+    </header>
+
+    <div class="main-container">
+        
+        <div id="winner-banner" class="winner-banner">
+            <div class="winner-title" id="winner-text">You Win!</div>
+            <div class="winner-subtitle">Tap New Round to play again</div>
+        </div>
+
+        <div id="status" class="status-badge">Your Turn (X)</div>
+
+        <div class="scoreboard">
+            <div class="score-card"><span class="score-label">PLAYER X</span><span id="score-x" class="score-value">0</span></div>
+            <div class="score-card"><span class="score-label">DRAW</span><span id="score-draw" class="score-value">0</span></div>
+            <div class="score-card"><span class="score-label">PLAYER O</span><span id="score-o" class="score-value">0</span></div>
+        </div>
+
+        <div class="game-board-container">
+            <div class="game-board" id="board">
+                <div id="strike-line" class="strike-line"></div>
+                <div class="cell" data-index="0"></div><div class="cell" data-index="1"></div><div class="cell" data-index="2"></div>
+                <div class="cell" data-index="3"></div><div class="cell" data-index="4"></div><div class="cell" data-index="5"></div>
+                <div class="cell" data-index="6"></div><div class="cell" data-index="7"></div><div class="cell" data-index="8"></div>
+            </div>
+        </div>
+
+        <div class="controls-area">
+            <div class="segmented-control">
+                <button class="seg-btn active" id="mode-ai" onclick="setMode('pva')"> <svg class="svg-icon" viewBox="0 0 24 24" style="width: 24px; height: 24px;">
+    <path fill="currentColor" d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5s-3 1.34-3 3 1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" />
+  </svg> vs <svg class="svg-icon" viewBox="0 0 24 24" style="width: 24px; height: 24px;">
+  <path fill="currentColor" d="M21 2H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h7v2H8v2h8v-2h-2v-2h7c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H3V4h18v12z" />
+</svg> </button>
+                <button class="seg-btn" id="mode-human" onclick="setMode('pvp')">  <svg class="svg-icon" viewBox="0 0 24 24" style="width: 24px; height: 24px;">
+   <path fill="currentColor" d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5s-3 1.34-3 3 1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" />
+ </svg>
+         vs  <svg class="svg-icon" viewBox="0 0 24 24" style="width: 24px; height: 24px;">
+   <path fill="currentColor" d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5s-3 1.34-3 3 1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" />
+ </svg></button>
+            </div>
+            <div class="segmented-control" id="diff-selector">
+                <button class="seg-btn" id="diff-easy" onclick="setDifficulty('easy')">Easy</button>
+                <button class="seg-btn active" id="diff-medium" onclick="setDifficulty('medium')">Medium</button>
+                <button class="seg-btn" id="diff-hard" onclick="setDifficulty('hard')">Hard</button>
+            </div>
+            <div class="action-buttons">
+                <button class="btn btn-reset" onclick="resetScores()">
+                    <svg class="svg-icon" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                </button>
+                <button class="btn btn-restart" onclick="restartGame()">New Round</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="settings-modal" onclick="if(event.target === this) toggleSettings(false)">
+        <div class="settings-sheet">
+            <div class="sheet-header">
+                <span class="sheet-title">Appearance</span>
+                <button class="close-btn" onclick="toggleSettings(false)">✕</button>
+            </div>
+
+            <div class="setting-section">
+                <span class="section-label">Display Mode</span>
+                <div class="toggle-row" onclick="toggleDarkMode()" style="cursor: pointer;">
+                    <div class="toggle-label" id="theme-icon-container">
+                        <svg class="svg-icon" id="theme-icon" viewBox="0 0 24 24"><path d="M10 2c-1.82 0-3.53.5-5 1.35C7.99 5.08 10 8.3 10 12s-2.01 6.92-5 8.65C6.47 21.5 8.18 22 10 22c5.52 0 10-4.48 10-10S15.52 2 10 2z"/></svg> 
+                        <span>Dark Mode</span>
+                    </div>
+                    <div style="font-weight: 700; color: var(--primary-color);" id="dark-mode-status">OFF</div>
+                </div>
+            </div>
+
+            <div class="setting-section">
+                <span class="section-label">Color Theme</span>
+                <div class="theme-grid" id="theme-grid"></div>
+            </div>
+
+            <div class="setting-section">
+                <span class="section-label">Background Pattern</span>
+                <div class="pattern-list" id="pattern-list">
+                    <button class="pattern-btn active" onclick="setPattern('none')">None</button>
+                    <button class="pattern-btn" onclick="setPattern('pat-grid')">Grid</button>
+                    <button class="pattern-btn" onclick="setPattern('pat-dots')">Dots</button>
+                    <button class="pattern-btn" onclick="setPattern('pat-lines')">Lines</button>
+                    <button class="pattern-btn" onclick="setPattern('pat-cross')">X</button>
+                    <button class="pattern-btn" onclick="setPattern('pat-circle')">O</button>
+                </div>
+            </div>
+
+            <div class="setting-section">
+                <span class="section-label">About</span>
+                <div class="about-container">
+                    <div class="about-row"><span class="about-label">Application</span><span class="about-value">Tic-Tac-Toe Pro</span></div>
+                    <div class="about-row"><span class="about-label">Version</span><span class="about-value">1.0</span></div>
+                    <div class="about-row"><span class="about-label">Developer</span><span class="about-value">Santosh Rana</span></div>
+                    <div class="about-row"><span class="about-label">Country</span><span class="about-value">India 🇮🇳(Odisha, Khetribarapur) </span></div>
+                </div>
+
+                <div class="social-links">
+                    <a href="https://www.instagram.com/santosh_rana_23/" target="_blank" rel="noopener noreferrer" class="social-link external-link">
+                       <svg class="svg-icon" viewBox="0 0 24 24" style="width: 24px; height: 24px;">
+   <path fill="currentColor" d="M12 2.163c3.204 0 3.584.012 4.85.07 1.366.062 2.633.332 3.608 1.308.975.975 1.245 2.242 1.308 3.607.058 1.266.07 1.646.07 4.85s-.012 3.584-.07 4.85c-.063 1.366-.333 2.633-1.308 3.608-.975.975-2.242 1.245-3.608 1.308-1.266.058-1.646.07-4.85.07s-3.584-.012-4.85-.07c-1.366-.063-2.633-.333-3.608-1.308-.975-.975-1.245-2.242-1.308-3.608-.058-1.266-.07-1.646-.07-4.85s.012-3.584.07-4.85c.063-1.366.333-2.633 1.308-3.608.975-.975 2.242-1.245 3.608-1.308 1.266-.058 1.646-.07 4.85-.07zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.058-1.69-.072-4.949-.072zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" />
+ </svg>
+                        <span>Follow on Instagram</span>
+                        <svg
+  xmlns="http://www.w3.org/2000/svg" 
+  width="13" 
+  height="13" 
+  viewBox="0 0 24 24" 
+  fill="none" 
+  stroke="currentColor" 
+  stroke-width="2" 
+  stroke-linecap="round" 
+  stroke-linejoin="round"
+  style="margin-left: 102px;
+>
+  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+  <polyline points="15 3 21 3 21 9"></polyline>
+  <line x1="10" y1="14" x2="21" y2="3"></line>
+</svg>
+
+                    </a>
+                    <a href="https://x.com/Santosh_code143" target="_blank" rel="noopener noreferrer" class="social-link external-link">
+                        <svg class="svg-icon" viewBox="0 0 24 24" style="width: 22px; height: 22px;">
+    <path fill="currentColor" d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932ZM17.61 20.644h2.039L6.486 3.24H4.298Z" />
+  </svg>
+                        <span>Follow on X</span>
+                        <svg
+  xmlns="http://www.w3.org/2000/svg" 
+  width="13" 
+  height="13" 
+  viewBox="0 0 24 24" 
+  fill="none" 
+  stroke="currentColor" 
+  stroke-width="2" 
+  stroke-linecap="round" 
+  stroke-linejoin="round"
+  style="margin-left: 150px;
+>
+  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+  <polyline points="15 3 21 3 21 9"></polyline>
+  <line x1="10" y1="14" x2="21" y2="3"></line>
+</svg>
+
+                    </a>
+                </div>
+          <div class="privacy-policy"> <div class="privacy-header">Privacy Policy</div><div >
+<p><strong>Data :</strong> This application does not collect any personal data or information from users.</p>
+<p><strong>privacy
+    
+    ContentCollection:</strong> No login credential,personal information or sensetive data is stored or tracked</p>
+
+<p><strong>Game
+
+Data:</strong> All game scores and
+settings remain local to your device or
+browser session only.</p>
+
+<p><strong>External Links:</strong> Social media links open in your external browser and are subject to their respective privacy policies.</p>
+
+<p><strong>Privacy
+Commitment:</strong> Your gameplay
+experience is completely private and secure.</p>
+
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+       <script>
+        /* --- OFFLINE / APK LOGIC --- */
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js').catch(err => console.log('Offline SW failed', err));
+            });
+        }
+
+        document.addEventListener('click', (e) => {
+            const link = e.target.closest('a');
+            if (link && link.classList.contains('external-link')) {
+                e.preventDefault();
+                const url = link.getAttribute('href');
+                window.open(url, '_system'); 
+            }
+        });
+
+        /* --- THEME & LOCAL STORAGE LOGIC --- */
+        const themes = [
+            { id: 'material', prim: '#3f51b5', acc: '#ff4081' },
+            { id: 'slate', prim: '#455a64', acc: '#00bcd4' },
+            { id: 'charcoal', prim: '#37474f', acc: '#cfd8dc' },
+            { id: 'indigo', prim: '#5c6bc0', acc: '#ffca28' },
+            { id: 'forest', prim: '#2e7d32', acc: '#a5d6a7' },
+            { id: 'coffee', prim: '#795548', acc: '#d7ccc8' },
+            { id: 'graphite', prim: '#212121', acc: '#ffd700' },
+            { id: 'teal', prim: '#00796b', acc: '#4db6ac' }
+        ];
+
+        let currentTheme = 'material';
+        let isDarkMode = false;
+        const themeGrid = document.getElementById('theme-grid');
+        
+        // Generate Theme Buttons
+        themes.forEach(t => {
+            const el = document.createElement('div');
+            el.className = `theme-option ${t.id === currentTheme ? 'selected' : ''}`;
+            el.style.background = `linear-gradient(135deg, ${t.prim} 50%, ${t.acc} 50%)`;
+            el.onclick = () => applyTheme(t.id);
+            // Add ID for selection matching
+            el.dataset.themeId = t.id; 
+            themeGrid.appendChild(el);
+        });
+
+        function applyTheme(id) {
+            currentTheme = id;
+            const t = themes.find(x => x.id === id);
+            
+            // Apply CSS Variables
+            document.documentElement.style.setProperty('--primary-color', t.prim);
+            document.documentElement.style.setProperty('--accent-color', t.acc);
+            
+            // Update UI Selection
+            document.querySelectorAll('.theme-option').forEach(el => {
+                el.classList.toggle('selected', el.dataset.themeId === id);
+            });
+
+            // SAVE TO LOCAL STORAGE
+            localStorage.setItem('ttt_theme', id);
+        }
+
+        function toggleDarkMode(forceState = null) {
+            // If forceState is provided (true/false), use it. Otherwise toggle current state.
+            isDarkMode = forceState !== null ? forceState : !isDarkMode;
+            
+            if (isDarkMode) document.body.classList.add('dark-mode');
+            else document.body.classList.remove('dark-mode');
+
+            document.getElementById('dark-mode-status').innerText = isDarkMode ? "ON" : "OFF";
+            updateThemeIcon();
+
+            // SAVE TO LOCAL STORAGE
+            localStorage.setItem('ttt_darkmode', isDarkMode);
+        }
+
+        function updateThemeIcon() {
+            const icon = document.getElementById('theme-icon');
+            if(isDarkMode) icon.innerHTML = '<path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zM2 13h2c.55 0 1-.45 1-1s-.45-1-1-1H2c-.55 0-1 .45-1 1s.45 1 1 1zm18 0h2c.55 0 1-.45 1-1s-.45-1-1-1h-2c-.55 0-1 .45-1 1s.45 1 1 1zM11 2v2c0 .55.45 1 1 1s1-.45 1-1V2c0-.55-.45-1-1-1s-1 .45-1 1zm0 18v2c0 .55.45 1 1 1s1-.45 1-1v-2c0-.55-.45-1-1-1s-1 .45-1 1zM5.99 4.58c-.39-.39-1.03-.39-1.41 0s-.39 1.03 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41L5.99 4.58zm12.37 12.37c-.39-.39-1.03-.39-1.41 0s-.39 1.03 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41l-1.06-1.06zm1.06-12.37c-.39-.39-1.03-.39-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06c.39-.39.39-1.03 0-1.41zm-12.37 12.37c-.39-.39-1.03-.39-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06c.39-.39.39-1.03 0-1.41z"/>';
+            else icon.innerHTML = '<path d="M10 2c-1.82 0-3.53.5-5 1.35C7.99 5.08 10 8.3 10 12s-2.01 6.92-5 8.65C6.47 21.5 8.18 22 10 22c5.52 0 10-4.48 10-10S15.52 2 10 2z"/>';
+        }
+
+        function setPattern(patClass) {
+            document.getElementById('bg-pattern').className = `pattern-bg ${patClass}`;
+            document.querySelectorAll('.pattern-btn').forEach(b => b.classList.remove('active'));
+            event.target.classList.add('active');
+            localStorage.setItem('ttt_pattern', patClass);
+        }
+
+        function toggleSettings(show) {
+            const modal = document.getElementById('settings-modal');
+            if(show) modal.classList.add('open');
+            else modal.classList.remove('open');
+        }
+
+        /* --- GAME VARIABLES --- */
+        const PLAYER_X = 'X';
+        const PLAYER_O = 'O';
+        let board = Array(9).fill(null);
+        let gameActive = true;
+        let currentPlayer = PLAYER_X;
+        let difficulty = 'medium'; 
+        let gameMode = 'pva'; 
+        let scores = { x: 0, o: 0, draws: 0 };
+
+        const cells = document.querySelectorAll('.cell');
+        const statusDisplay = document.getElementById('status');
+        const scoreXEl = document.getElementById('score-x');
+        const scoreOEl = document.getElementById('score-o');
+        const scoreDrawEl = document.getElementById('score-draw');
+        const diffSelector = document.getElementById('diff-selector');
+        const strikeLine = document.getElementById('strike-line');
+        const winnerBanner = document.getElementById('winner-banner');
+        const winnerText = document.getElementById('winner-text');
+        
+        cells.forEach(cell => cell.addEventListener('click', handleCellClick));
+
+        /* --- LOAD SAVED SETTINGS ON START --- */
+        window.onload = () => {
+            // Load Theme
+            const savedTheme = localStorage.getItem('ttt_theme');
+            if(savedTheme) applyTheme(savedTheme);
+
+            // Load Dark Mode
+            const savedDark = localStorage.getItem('ttt_darkmode');
+            if(savedDark === 'true') toggleDarkMode(true);
+
+            // Load Pattern
+            const savedPattern = localStorage.getItem('ttt_pattern');
+            if(savedPattern) {
+                document.getElementById('bg-pattern').className = `pattern-bg ${savedPattern}`;
+                // Update active button state for pattern
+                document.querySelectorAll('.pattern-btn').forEach(b => {
+                    b.classList.remove('active');
+                    if(b.onclick.toString().includes(savedPattern)) b.classList.add('active');
+                });
+            }
+        };
+
+        function handleCellClick(e) {
+            const index = e.target.getAttribute('data-index');
+            if (board[index] || !gameActive) return;
+
+            if (gameMode === 'pvp') {
+                makeMove(index, currentPlayer);
+            } else {
+                if (currentPlayer !== PLAYER_X) return; 
+                makeMove(index, PLAYER_X);
+                if (gameActive) {
+                    currentPlayer = PLAYER_O;
+                    statusDisplay.innerText = "AI Thinking...";
+                    // Small delay to make it feel natural
+                    setTimeout(() => { makeAIMove(); }, 500);
+                }
+            }
+        }
+
+        function makeMove(index, player) {
+            board[index] = player;
+            const cell = cells[index];
+            cell.classList.add(player === PLAYER_X ? 'x' : 'o');
+            
+            const xSvg = '<svg class="svg-icon mark-anim" style="width:40px;height:40px" viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>';
+            const oSvg = '<svg class="svg-icon mark-anim" style="width:40px;height:40px" viewBox="0 0 24 24"><path d="M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>';
+            
+            cell.innerHTML = player === PLAYER_X ? xSvg : oSvg;
+
+            if (checkWin(board, player)) {
+                // Determine winning combination to draw line
+                const winCombo = getWinningCombo(board, player);
+                if(winCombo) highlightWin(winCombo.indices, winCombo.class);
+                endGame(false, player);
+            }
+            else if (board.every(cell => cell !== null)) endGame(true);
+            else {
+                if (gameMode === 'pvp') {
+                    currentPlayer = (player === PLAYER_X) ? PLAYER_O : PLAYER_X;
+                    statusDisplay.innerText = `Player ${currentPlayer}'s Turn`;
+                } else if (player === PLAYER_O) {
+                    currentPlayer = PLAYER_X;
+                    statusDisplay.innerText = "Your Turn (X)";
+                }
+            }
+        }
+
+        /* --- INTELLIGENT AI LOGIC --- */
+        function makeAIMove() {
+            if (!gameActive) return;
+
+            let moveIndex;
+
+            if (difficulty === 'easy') {
+                // EASY: Completely Random
+                moveIndex = getRandomMove();
+            } 
+            else if (difficulty === 'medium') {
+                // MEDIUM: 1. Win if possible, 2. Block if needed, 3. Random
+                // 1. Check for win
+                moveIndex = findBestMove(board, PLAYER_O);
+                // 2. Block opponent
+                if (moveIndex === null) moveIndex = findBestMove(board, PLAYER_X);
+                // 3. Random
+                if (moveIndex === null) moveIndex = getRandomMove();
+            } 
+            else {
+                // HARD: Minimax Algorithm (Unbeatable)
+                // First move optimization: Center or Corner is best
+                const emptySpots = board.filter(s => s === null).length;
+                if(emptySpots === 9 || emptySpots === 8) {
+                    // If board is empty or 1 move made, take center if avail, else corner
+                    if(board[4] === null) moveIndex = 4; 
+                    else moveIndex = [0, 2, 6, 8][Math.floor(Math.random()*4)];
+                } else {
+                    moveIndex = minimax(board, PLAYER_O).index;
+                }
+            }
+
+            makeMove(moveIndex, PLAYER_O);
+        }
+
+        function getRandomMove() {
+            const avail = board.map((v, i) => v === null ? i : null).filter(v => v !== null);
+            return avail[Math.floor(Math.random() * avail.length)];
+        }
+
+        // Helper for Medium Difficulty (Find immediate win/block)
+        function findBestMove(currentBoard, player) {
+            for (let i = 0; i < 9; i++) {
+                if (currentBoard[i] === null) {
+                    currentBoard[i] = player;
+                    if (checkWin(currentBoard, player)) {
+                        currentBoard[i] = null; // Reset
+                        return i;
+                    }
+                    currentBoard[i] = null; // Reset
+                }
+            }
+            return null;
+        }
+
+        /* --- MINIMAX ALGORITHM (THE BRAIN) --- */
+        function minimax(newBoard, player) {
+            const availSpots = newBoard.map((v, i) => v === null ? i : null).filter(v => v !== null);
+
+            if (checkWin(newBoard, PLAYER_X)) return { score: -10 };
+            if (checkWin(newBoard, PLAYER_O)) return { score: 10 };
+            if (availSpots.length === 0) return { score: 0 };
+
+            const moves = [];
+
+            for (let i = 0; i < availSpots.length; i++) {
+                const move = {};
+                move.index = availSpots[i];
+                newBoard[availSpots[i]] = player;
+
+                if (player === PLAYER_O) {
+                    const result = minimax(newBoard, PLAYER_X);
+                    move.score = result.score;
+                } else {
+                    const result = minimax(newBoard, PLAYER_O);
+                    move.score = result.score;
+                }
+
+                newBoard[availSpots[i]] = null;
+                moves.push(move);
+            }
+
+            let bestMove;
+            if (player === PLAYER_O) { // AI (Maximizer)
+                let bestScore = -10000;
+                for (let i = 0; i < moves.length; i++) {
+                    if (moves[i].score > bestScore) {
+                        bestScore = moves[i].score;
+                        bestMove = i;
+                    }
+                }
+            } else { // Human (Minimizer)
+                let bestScore = 10000;
+                for (let i = 0; i < moves.length; i++) {
+                    if (moves[i].score < bestScore) {
+                        bestScore = moves[i].score;
+                        bestMove = i;
+                    }
+                }
+            }
+
+            return moves[bestMove];
+        }
+
+        /* --- WIN CHECKING --- */
+        const winningConditions = [
+            { indices: [0, 1, 2], class: 'strike-row-1' }, 
+            { indices: [3, 4, 5], class: 'strike-row-2' }, 
+            { indices: [6, 7, 8], class: 'strike-row-3' },
+            { indices: [0, 3, 6], class: 'strike-col-1' }, 
+            { indices: [1, 4, 7], class: 'strike-col-2' }, 
+            { indices: [2, 5, 8], class: 'strike-col-3' },
+            { indices: [0, 4, 8], class: 'strike-diag-1' }, 
+            { indices: [2, 4, 6], class: 'strike-diag-2' }
+        ];
+
+        // Modified checkWin to take arguments for Minimax simulation
+        function checkWin(currentBoard, player) {
+            return winningConditions.some(condition => {
+                return condition.indices.every(i => currentBoard[i] === player);
+            });
+        }
+
+        function getWinningCombo(currentBoard, player) {
+            return winningConditions.find(condition => {
+                return condition.indices.every(i => currentBoard[i] === player);
+            });
+        }
+
+        function highlightWin(indices, strikeClass) {
+            indices.forEach(i => cells[i].classList.add('winning'));
+            strikeLine.className = `strike-line ${strikeClass} active`;
+        }
+
+        function endGame(draw, winner = null) {
+            gameActive = false;
+            if (draw) {
+                statusDisplay.innerText = "Draw!";
+                scores.draws++; scoreDrawEl.innerText = scores.draws;
+                showBanner("It's a Draw 😐");
+            } else {
+                const text = winner === PLAYER_X ? "You Win!" : "AI Wins!"; // Changed text slightly
+                if(winner === PLAYER_X) scores.x++; else scores.o++;
+                scoreXEl.innerText = scores.x; scoreOEl.innerText = scores.o;
+                statusDisplay.innerText = winner === PLAYER_X ? "Victory!" : "Defeat!";
+                showBanner(winner === PLAYER_X ? "🎉 You Win!" : "🤖 AI Wins!");
+            }
+        }
+
+        function showBanner(text) {
+            winnerText.innerText = text;
+            setTimeout(() => winnerBanner.classList.add('visible'), 500);
+        }
+
+        function setMode(mode) {
+            gameMode = mode;
+            document.getElementById('mode-ai').classList.toggle('active', mode === 'pva');
+            document.getElementById('mode-human').classList.toggle('active', mode === 'pvp');
+            diffSelector.classList.toggle('hide', mode === 'pvp');
+            restartGame();
+        }
+
+        function setDifficulty(level) {
+            difficulty = level;
+            document.querySelectorAll('#diff-selector .seg-btn').forEach(b => b.classList.toggle('active', b.id === `diff-${level}`));
+            restartGame();
+        }
+
+        function restartGame() {
+            board.fill(null); gameActive = true; currentPlayer = PLAYER_X;
+            statusDisplay.innerText = gameMode === 'pva' ? "Your Turn (X)" : "Player X's Turn";
+            cells.forEach(c => { c.className = 'cell'; c.innerHTML = ''; });
+            strikeLine.className = 'strike-line';
+            winnerBanner.classList.remove('visible');
+        }
+
+        function resetScores() {
+            scores = { x: 0, o: 0, draws: 0 };
+            scoreXEl.innerText = '0'; scoreOEl.innerText = '0'; scoreDrawEl.innerText = '0';
+            restartGame();
+        }
+    </script>
+
+</body>
+</html>
